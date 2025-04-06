@@ -342,7 +342,7 @@ def create_choropleth_layer(
     )
     choropleth.update_traces(
         marker_line_color=border_color,
-        marker_line_width=2,
+        marker_line_width=1,
         showscale=show_colorbar,
         coloraxis=coloraxis,
     )
