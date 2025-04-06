@@ -474,9 +474,9 @@ def update_charts(selected_year, clickData, _):
         ].copy()
     )
 
-    adm1_df["HLI_5yr_MA"] = adm1_df["HLI"].rolling(window=5, min_periods=1).mean()
-    adm1_df["HLI_10yr_MA"] = adm1_df["HLI"].rolling(window=10, min_periods=1).mean()
-    adm1_df["HLI_20yr_MA"] = adm1_df["HLI"].rolling(window=20, min_periods=1).mean()
+    three_decade_avg = adm1_df["HLI"].tail(3).mean()
+    five_decade_avg = adm1_df["HLI"].tail(5).mean()
+    seven_decade_avg = adm1_df["HLI"].mean()
 
     adm1_df["temp_upper_error"] = (
         adm1_df["temperature_2m_max"] - adm1_df["temperature_2m_mean"]
@@ -499,39 +499,6 @@ def update_charts(selected_year, clickData, _):
         )
     )
 
-    # 5-Year Moving Average
-    fig_line.add_trace(
-        go.Scatter(
-            x=adm1_df["decade"],
-            y=adm1_df["HLI_5yr_MA"],
-            mode="lines",
-            name="5-Year MA",
-            line=dict(dash="dash", width=2),
-        )
-    )
-
-    # 10-Year Moving Average
-    fig_line.add_trace(
-        go.Scatter(
-            x=adm1_df["decade"],
-            y=adm1_df["HLI_10yr_MA"],
-            mode="lines",
-            name="10-Year MA",
-            line=dict(dash="dash", width=2),
-        )
-    )
-
-    # 20-Year Moving Average
-    fig_line.add_trace(
-        go.Scatter(
-            x=adm1_df["decade"],
-            y=adm1_df["HLI_20yr_MA"],
-            mode="lines",
-            name="20-Year MA",
-            line=dict(dash="dash", width=2),
-        )
-    )
-
     # Add Vertical Line at Selected Year
     fig_line.add_shape(
         dict(
@@ -541,6 +508,42 @@ def update_charts(selected_year, clickData, _):
             y0=adm1_df["HLI"].min(),  # Start from the lowest value in HLI
             y1=adm1_df["HLI"].max(),  # End at the highest value in HLI
             line=dict(width=0.5, dash="dot"),  # Customize color and style
+        )
+    )
+
+    # Define x range for horizontal lines (full decade span)
+    x_range = [adm1_df["decade"].min(), adm1_df["decade"].max()]
+
+    # Add 3-decade average line (bright magenta)
+    fig_line.add_trace(
+        go.Scatter(
+            x=x_range,
+            y=[three_decade_avg, three_decade_avg],
+            mode="lines",
+            name="T3-Decade Avg",
+            line=dict(dash="dash", width=2, color="#D62728"),  # strong red
+        )
+    )
+
+    # Add 5-decade average line (deep purple)
+    fig_line.add_trace(
+        go.Scatter(
+            x=x_range,
+            y=[five_decade_avg, five_decade_avg],
+            mode="lines",
+            name="T5-Decade Avg",
+            line=dict(dash="dash", width=2, color="#9467BD"),  # purple
+        )
+    )
+
+    # Add 10-decade average line (dark teal)
+    fig_line.add_trace(
+        go.Scatter(
+            x=x_range,
+            y=[seven_decade_avg, seven_decade_avg],
+            mode="lines",
+            name="T7-Decade Avg",
+            line=dict(dash="dash", width=2, color="#2CA02C"),
         )
     )
 
