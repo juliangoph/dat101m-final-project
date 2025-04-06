@@ -87,6 +87,48 @@ gdf_decadal_adm1["decade"] = gdf_decadal_adm1["decade"].astype(int, errors="igno
 app = dash.Dash(external_stylesheets=[dbc.themes.YETI, dbc.icons.BOOTSTRAP])
 server = app.server  # Required for deployment with Gunicorn
 
+steps = [
+    html.Div(
+        [
+            html.P("Use the decade slider below the map to select a time period."),
+            html.Img(
+                src="/assets/step1.png", style={"width": "100%", "borderRadius": "12px"}
+            ),
+        ]
+    ),
+    html.Div(
+        [
+            html.P(
+                'Click on a region to view localized statistics. Use the "All Regions" button to reset the map.'
+            ),
+            html.Img(
+                src="/assets/step2.png", style={"width": "100%", "borderRadius": "12px"}
+            ),
+        ]
+    ),
+    html.Div(
+        [
+            html.P("Click the play button to animate changes across decades."),
+            html.Img(
+                src="/assets/step3.png", style={"width": "100%", "borderRadius": "12px"}
+            ),
+        ]
+    ),
+    html.Div(
+        [
+            html.P(
+                "Hover over charts for detailed values. Use the filter panel on the right to explore data further."
+            ),
+            html.Img(
+                src="/assets/step4.png", style={"width": "100%", "borderRadius": "12px"}
+            ),
+        ]
+    ),
+    html.Div(
+        html.P("You're all set! Click Finish to start exploring the dashboard."),
+    ),
+]
+
 app.layout = html.Div(
     [
         dbc.Navbar(
@@ -106,6 +148,14 @@ app.layout = html.Div(
                     ),
                     dbc.Nav(
                         [
+                            dbc.Button(
+                                "Launch Onboarding",
+                                id="open",
+                                color="light",
+                                outline=True,
+                                size="sm",
+                                className="mb-2 mb-md-0 me-0 me-md-2",
+                            ),
                             dbc.NavItem(
                                 dbc.NavLink(
                                     html.I(className="bi bi-github"),
@@ -113,7 +163,11 @@ app.layout = html.Div(
                                     className="d-flex align-items-center",
                                 )
                             ),
-                        ]
+                        ],
+                        className=(
+                            "d-flex flex-column flex-md-row align-items-center "
+                            "justify-content-center justify-content-md-end ms-md-auto"
+                        ),
                     ),
                 ],
                 fluid=True,
@@ -236,7 +290,27 @@ app.layout = html.Div(
             color="primary",
             className="rounded-circle border-0 d-flex align-items-center justify-content-center",
         ),
-    ]
+        dbc.Modal(
+            [
+                dbc.ModalHeader(dbc.ModalTitle("Onboarding")),
+                dbc.ModalBody(
+                    id="onboarding-body", children=steps[0], className="fade-text"
+                ),
+                dbc.ModalFooter(
+                    [
+                        dbc.Button("Back", id="back", n_clicks=0, disabled=True),
+                        dbc.Button("Next", id="next", n_clicks=0),
+                    ]
+                ),
+            ],
+            id="modal",
+            is_open=False,
+            backdrop="static",  # prevent clicking outside to close
+            keyboard=False,  # prevent ESC to close
+        ),
+        # Hidden store to keep track of step index
+        html.Div(id="step-store", children="0", style={"display": "none"}),
+    ],
 )
 
 
@@ -474,18 +548,7 @@ def update_charts(selected_year, clickData, _):
         ].copy()
     )
 
-    three_decade_avg = adm1_df["HLI"].tail(3).mean()
-    five_decade_avg = adm1_df["HLI"].tail(5).mean()
-    seven_decade_avg = adm1_df["HLI"].mean()
-
-    adm1_df["temp_upper_error"] = (
-        adm1_df["temperature_2m_max"] - adm1_df["temperature_2m_mean"]
-    )
-    adm1_df["temp_lower_error"] = (
-        adm1_df["temperature_2m_mean"] - adm1_df["temperature_2m_min"]
-    )
-
-    # LINE CHART: HLI Trends + Moving Averages
+    # LINE CHART: HLI Trends + Horizontal Line Averages
     fig_line = go.Figure()
 
     # Original HLI Trend
@@ -514,15 +577,29 @@ def update_charts(selected_year, clickData, _):
     # Define x range for horizontal lines (full decade span)
     x_range = [adm1_df["decade"].min(), adm1_df["decade"].max()]
 
+    three_decade_avg = adm1_df["HLI"].tail(3).mean()
+    five_decade_avg = adm1_df["HLI"].tail(5).mean()
+    seven_decade_avg = adm1_df["HLI"].mean()
+
     # Add 3-decade average line (bright magenta)
     fig_line.add_trace(
         go.Scatter(
             x=x_range,
             y=[three_decade_avg, three_decade_avg],
             mode="lines",
-            name="T3-Decade Avg",
-            line=dict(dash="dash", width=2, color="#D62728"),  # strong red
+            line=dict(dash="dash", width=2, color="#D62728"),
+            showlegend=False,
         )
+    )
+    fig_line.add_annotation(
+        x=x_range[1],  # Right end of the line
+        y=three_decade_avg,
+        text="3-Decade Avg",
+        showarrow=False,
+        xanchor="left",
+        yanchor="middle",
+        font=dict(size=12, color="#D62728"),
+        xshift=5,  # Offset to the right
     )
 
     # Add 5-decade average line (deep purple)
@@ -531,20 +608,40 @@ def update_charts(selected_year, clickData, _):
             x=x_range,
             y=[five_decade_avg, five_decade_avg],
             mode="lines",
-            name="T5-Decade Avg",
-            line=dict(dash="dash", width=2, color="#9467BD"),  # purple
+            line=dict(dash="dash", width=2, color="#9467BD"),
+            showlegend=False,
         )
     )
+    fig_line.add_annotation(
+        x=x_range[1],
+        y=five_decade_avg,
+        text="5-Decade Avg",
+        showarrow=False,
+        xanchor="left",
+        yanchor="middle",
+        font=dict(size=12, color="#9467BD"),
+        xshift=5,
+    )
 
-    # Add 10-decade average line (dark teal)
+    # Add 7-decade average line (dark green)
     fig_line.add_trace(
         go.Scatter(
             x=x_range,
             y=[seven_decade_avg, seven_decade_avg],
             mode="lines",
-            name="T7-Decade Avg",
             line=dict(dash="dash", width=2, color="#2CA02C"),
+            showlegend=False,
         )
+    )
+    fig_line.add_annotation(
+        x=x_range[1],
+        y=seven_decade_avg,
+        text="7-Decade Avg",
+        showarrow=False,
+        xanchor="left",
+        yanchor="middle",
+        font=dict(size=12, color="#2CA02C"),
+        xshift=5,
     )
 
     # Layout settings
@@ -557,6 +654,8 @@ def update_charts(selected_year, clickData, _):
         df=adm1_df,
     )
 
+    fig_line.update_layout(showlegend=False)
+
     # BAR CHART: Temperature and Wind Speed for Selected Year & Region
     # Create figure with secondary y-axis
     fig_bar = make_subplots(specs=[[{"secondary_y": True}]])
@@ -568,6 +667,32 @@ def update_charts(selected_year, clickData, _):
     customdata_apparent_minmax = adm1_df[
         ["apparent_temperature_min", "apparent_temperature_max"]
     ].values
+
+    # Fake trace for first group
+    fig_bar.add_trace(
+        go.Scatter(
+            x=[None],
+            y=[None],  # No data, just for legend
+            mode="lines",
+            name="<b>Temperature Metrics</b>",  # Bold section title
+            line=dict(color="rgba(0,0,0,0)"),  # Invisible
+            showlegend=True,
+            hoverinfo="skip",
+        )
+    )
+
+    # Fake trace for second group
+    fig_bar.add_trace(
+        go.Scatter(
+            x=[None],
+            y=[None],
+            mode="lines",
+            name="<b>Environmental Factors</b>",
+            line=dict(color="rgba(0,0,0,0)"),
+            showlegend=True,
+            hoverinfo="skip",
+        )
+    )
 
     fig_bar.add_trace(
         go.Bar(
@@ -585,6 +710,18 @@ def update_charts(selected_year, clickData, _):
             ),
         ),
         secondary_y=False,
+    )
+
+    # Add Scatter Line (Secondary Y-Axis: Wind Speed)
+    fig_bar.add_trace(
+        go.Scatter(
+            x=adm1_df["decade"],
+            y=adm1_df["wind_speed_10m_max"],
+            mode="markers+lines",
+            name="Wind Speed",
+            line=dict(dash="dot", width=2, color="#1F78B4"),
+        ),
+        secondary_y=True,  # Assign this trace to the secondary y-axis
     )
 
     fig_bar.add_trace(
@@ -605,18 +742,6 @@ def update_charts(selected_year, clickData, _):
         secondary_y=False,
     )
 
-    # Add Scatter Line (Secondary Y-Axis: Wind Speed)
-    fig_bar.add_trace(
-        go.Scatter(
-            x=adm1_df["decade"],
-            y=adm1_df["wind_speed_10m_max"],
-            mode="markers+lines",
-            name="Wind Speed",
-            line=dict(dash="dot", width=2, color="#1F78B4"),
-        ),
-        secondary_y=True,  # Assign this trace to the secondary y-axis
-    )
-
     # Add Scatter Line (Secondary Y-Axis: Shortwave Radiation)
     fig_bar.add_trace(
         go.Scatter(
@@ -624,7 +749,7 @@ def update_charts(selected_year, clickData, _):
             y=adm1_df["shortwave_radiation_sum"],
             mode="markers+lines",
             name="Shortwave Radiation",
-            line=dict(dash="dot", width=2, color="#AC6C57"),
+            line=dict(dash="dot", width=2, color="#FF7F0E"),
         ),
         secondary_y=True,  # Assign this trace to the secondary y-axis
     )
@@ -656,8 +781,25 @@ def update_charts(selected_year, clickData, _):
         df=adm1_df,
     )
 
-    # Remove Y-axis grid lines
+    # Dynamically calculate the lowest and highest values among both bar traces
+    min_y = (
+        min(
+            adm1_df["temperature_2m_mean"].min(),
+            adm1_df["apparent_temperature_mean"].min(),
+        )
+        - 1
+    )
+    max_y = (
+        max(
+            adm1_df["temperature_2m_mean"].max(),
+            adm1_df["apparent_temperature_mean"].max(),
+        )
+        + 1
+    )
+
+    # Remove Y-axis grid lines and add dynamic range
     fig_bar.update_layout(
+        yaxis=dict(range=[min_y, max_y]),  # Update y-axis to not start from zero
         yaxis2=dict(
             showgrid=False,  # Removes secondary Y-axis grid
             zeroline=False,
@@ -743,6 +885,56 @@ def step_year_slider(n, current_year):
     current_idx = decades.index(current_year)
     next_idx = (current_idx + 1) % len(decades)  # Loop back to start
     return decades[next_idx]
+
+
+# Modal toggle
+@app.callback(
+    Output("modal", "is_open"), Input("open", "n_clicks"), prevent_initial_call=True
+)
+def open_modal(n):
+    return True
+
+
+# Step navigation logic
+@app.callback(
+    Output("onboarding-body", "children"),
+    Output("step-store", "children"),
+    Output("back", "disabled"),
+    Output("next", "children"),  # Change to "Finish" on last step
+    Input("next", "n_clicks"),
+    Input("back", "n_clicks"),
+    State("step-store", "children"),
+    prevent_initial_call=True,
+)
+def navigate_steps(n_next, n_back, step_str):
+    ctx = dash.callback_context
+    step = int(step_str)
+
+    if not ctx.triggered:
+        raise dash.exceptions.PreventUpdate
+
+    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    if button_id == "next":
+        step = min(len(steps) - 1, step + 1)
+    elif button_id == "back":
+        step = max(0, step - 1)
+
+    next_label = "Finish" if step == len(steps) - 1 else "Next"
+    return steps[step], str(step), step == 0, next_label
+
+
+# Optionally: Close modal on "Finish"
+@app.callback(
+    Output("modal", "is_open", allow_duplicate=True),
+    Input("next", "n_clicks"),
+    State("step-store", "children"),
+    prevent_initial_call="initial_duplicate",
+)
+def close_on_finish(n, step):
+    if int(step) == len(steps) - 1:
+        return False
+    raise dash.exceptions.PreventUpdate
 
 
 # Run app

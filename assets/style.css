@@ -54,3 +54,7 @@
   height: 60px;
   z-index: 1000;
 }
+
+.fade-text {
+  transition: opacity 0.4s ease-in-out;
+}
