@@ -433,18 +433,30 @@ def create_choropleth_layer(
     ],
 )
 def update_choropleth(selected_year, clickData, n_clicks):
+    # Get the ID of the triggering component
     triggered_id = ctx.triggered_id
+
+    # Store the last selected region as a global variable
+    global last_selected_region
+
+    # Reset button clicked — override with All Regions
+    if triggered_id == "reset-button":
+        last_selected_region = "All Regions"
+
+    # Region clicked — update last_selected_region
+    elif triggered_id == "choropleth-map" and clickData and "points" in clickData:
+        last_selected_region = clickData["points"][0]["location"]
+
+    # If slider or anything else triggered — just reuse last_selected_region
+
+    # Fallback if no region ever selected
+    if "last_selected_region" not in globals():
+        last_selected_region = "All Regions"
 
     # Filter data for the selected year
     filtered_df = preloaded_yearly_data.get(selected_year, gdf_decadal_adm1.copy())
 
-    # Determine the selected region, reset if the reset button is clicked
-    if triggered_id == "reset-button":
-        selected_region = "All Regions"  # Force reset to ALL REGIONS
-    else:
-        selected_region = get_selected_region(
-            clickData
-        )  # Only run if reset wasn't clicked
+    selected_region = last_selected_region
 
     # Simulated low-opacity color scale (pale)
     highlight_colorscale = [(0.0, "#0000FF"), (0.5, "#FFFF00"), (1.0, "#FF0000")]
