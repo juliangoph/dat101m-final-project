@@ -514,6 +514,8 @@ def update_choropleth(selected_year, clickData, n_clicks):
         coloraxis_colorbar=dict(title="HLI"),
         coloraxis2=dict(
             colorscale=dimmed_colorscale,
+            cmin=filtered_df["HLI"].min(),  # set based on the full dataset
+            cmax=filtered_df["HLI"].max(),
             showscale=False,  # Hide secondary color
         ),
         uirevision=str(n_clicks),
