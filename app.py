@@ -591,71 +591,30 @@ def update_charts(selected_year, clickData, _):
     # Define x range for horizontal lines (full decade span)
     x_range = [adm1_df["decade"].min(), adm1_df["decade"].max()]
 
-    three_decade_avg = adm1_df["HLI"].tail(3).mean()
-    five_decade_avg = adm1_df["HLI"].tail(5).mean()
-    seven_decade_avg = adm1_df["HLI"].mean()
+    # Calculate moving averages
+    adm1_df["HLI_3dec_MA"] = adm1_df["HLI"].rolling(window=3, min_periods=3).mean()
+    adm1_df["HLI_5dec_MA"] = adm1_df["HLI"].rolling(window=5, min_periods=5).mean()
 
-    # Add 3-decade average line (bright magenta)
+    # Add 3-decade moving average line
     fig_line.add_trace(
         go.Scatter(
-            x=x_range,
-            y=[three_decade_avg, three_decade_avg],
-            mode="lines",
+            x=adm1_df["decade"],
+            y=adm1_df["HLI_3dec_MA"],
+            mode="lines+markers",
+            name="3-Decade Moving Avg",
             line=dict(dash="dash", width=2, color="#D62728"),
-            showlegend=False,
         )
     )
-    fig_line.add_annotation(
-        x=x_range[1],  # Right end of the line
-        y=three_decade_avg,
-        text="3-Decade Avg",
-        showarrow=False,
-        xanchor="left",
-        yanchor="middle",
-        font=dict(size=12, color="#D62728"),
-        xshift=5,  # Offset to the right
-    )
 
-    # Add 5-decade average line (deep purple)
+    # Add 5-decade moving average line
     fig_line.add_trace(
         go.Scatter(
-            x=x_range,
-            y=[five_decade_avg, five_decade_avg],
-            mode="lines",
+            x=adm1_df["decade"],
+            y=adm1_df["HLI_5dec_MA"],
+            mode="lines+markers",
+            name="5-Decade Moving Avg",
             line=dict(dash="dash", width=2, color="#9467BD"),
-            showlegend=False,
         )
-    )
-    fig_line.add_annotation(
-        x=x_range[1],
-        y=five_decade_avg,
-        text="5-Decade Avg",
-        showarrow=False,
-        xanchor="left",
-        yanchor="middle",
-        font=dict(size=12, color="#9467BD"),
-        xshift=5,
-    )
-
-    # Add 7-decade average line (dark green)
-    fig_line.add_trace(
-        go.Scatter(
-            x=x_range,
-            y=[seven_decade_avg, seven_decade_avg],
-            mode="lines",
-            line=dict(dash="dash", width=2, color="#2CA02C"),
-            showlegend=False,
-        )
-    )
-    fig_line.add_annotation(
-        x=x_range[1],
-        y=seven_decade_avg,
-        text="7-Decade Avg",
-        showarrow=False,
-        xanchor="left",
-        yanchor="middle",
-        font=dict(size=12, color="#2CA02C"),
-        xshift=5,
     )
 
     # Layout settings
@@ -667,8 +626,6 @@ def update_charts(selected_year, clickData, _):
         x_col="decade",
         df=adm1_df,
     )
-
-    fig_line.update_layout(showlegend=False)
 
     # BAR CHART: Temperature and Wind Speed for Selected Year & Region
     # Create figure with secondary y-axis
